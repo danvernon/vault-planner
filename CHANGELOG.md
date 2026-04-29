@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0
+
+- Custom keyhole-vault logo in the title bar (`Textures/VaultPlannerLogo.tga`).
+- Locked slots now show difficulty / key level / projected ilvl alongside their progress (e.g. `4/6 Heroic · 278`, `3/8 +12 · 272`), so you can see the trajectory before the slot fills.
+- Character list sorted by most-recently-seen first.
+- `ESC` closes the window.
+
 ## 0.1.0-rc1
 
 - Initial release.

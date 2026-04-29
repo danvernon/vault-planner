@@ -39,7 +39,9 @@ local function ScanTrack(track)
             level = a.level or 0,
             claimableLevel = a.claimableLevel or 0,
             filled = filled,
-            rewardItemLevel = filled and GetRewardItemLevel(a) or 0,
+            -- Reward ilvl works for locked slots too; it reflects what the
+            -- reward would be at the slot's current trajectory.
+            rewardItemLevel = GetRewardItemLevel(a),
         }
     end
     table.sort(slots, function(a, b) return a.index < b.index end)

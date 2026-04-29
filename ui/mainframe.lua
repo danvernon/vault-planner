@@ -3,7 +3,7 @@ local addonName, VaultPlanner = ...
 local MainFrame = {}
 VaultPlanner.MainFrame = MainFrame
 
-local TRACK_COL_WIDTH = 130
+local TRACK_COL_WIDTH = 150
 local CHAR_COL_WIDTH = 270
 local ROW_HEIGHT = 44
 local ROW_STRIDE = 50
@@ -34,21 +34,16 @@ local function ApplyCardBg(frame, color)
     frame._cardBg:SetColorTexture(c[1], c[2], c[3], c[4])
 end
 
-local function CountFilled(slots)
-    local n = 0
-    for _, s in ipairs(slots or {}) do if s.filled then n = n + 1 end end
-    return n
-end
-
 local function FormatSlot(trackKey, slot)
     if not slot then return C(COLORS.muted, "—") end
-    -- Unclaimed leftover reward from a prior week — flagged in cyan accent.
     if (slot.claimableLevel or 0) > 0 then
         return C(COLORS.accent, string.format("Claim · %d", slot.claimableLevel))
     end
+
+    local label = VaultPlanner.FormatLevelLabel(trackKey, slot.level)
+    local ilvl = slot.rewardItemLevel or 0
+
     if slot.filled then
-        local label = VaultPlanner.FormatLevelLabel(trackKey, slot.level)
-        local ilvl = slot.rewardItemLevel or 0
         if ilvl > 0 and label ~= "" then
             return C(COLORS.good, string.format("%s · %d", label, ilvl))
         elseif ilvl > 0 then
@@ -58,7 +53,21 @@ local function FormatSlot(trackKey, slot)
         end
         return C(COLORS.good, "Filled")
     end
-    return C(COLORS.warn, string.format("%d/%d", slot.progress or 0, slot.threshold or 0))
+
+    -- Locked slot — append difficulty/key/tier and projected ilvl when known.
+    local progress = string.format("%d/%d", slot.progress or 0, slot.threshold or 0)
+    local detail
+    if label ~= "" and ilvl > 0 then
+        detail = string.format("%s · %d", label, ilvl)
+    elseif label ~= "" then
+        detail = label
+    elseif ilvl > 0 then
+        detail = string.format("ilvl %d", ilvl)
+    end
+    if detail then
+        return C(COLORS.warn, progress) .. " " .. C(COLORS.muted, detail)
+    end
+    return C(COLORS.warn, progress)
 end
 
 local function FormatTrackCell(trackKey, slots)
@@ -135,10 +144,6 @@ local function BuildSortedList()
         list[#list + 1] = c
     end
     table.sort(list, function(a, b)
-        local af, bf = 0, 0
-        for _, t in pairs(a.tracks or {}) do af = af + CountFilled(t) end
-        for _, t in pairs(b.tracks or {}) do bf = bf + CountFilled(t) end
-        if af ~= bf then return af > bf end
         return (a.lastSeen or 0) > (b.lastSeen or 0)
     end)
     return list
@@ -199,10 +204,15 @@ function MainFrame:Build()
     f.footerTopEdge:SetColorTexture(0, 0.82, 0.76, 0.55)
 
     -- Title
+    f.titleIconFallback = f:CreateTexture(nil, "ARTWORK")
+    f.titleIconFallback:SetPoint("TOPLEFT", 8, -3)
+    f.titleIconFallback:SetSize(22, 22)
+    f.titleIconFallback:SetTexture("Interface\\Icons\\inv_misc_coin_01")
+
     f.titleIcon = f:CreateTexture(nil, "OVERLAY")
     f.titleIcon:SetPoint("TOPLEFT", 8, -3)
     f.titleIcon:SetSize(22, 22)
-    f.titleIcon:SetTexture("Interface\\Icons\\inv_misc_coin_01")
+    f.titleIcon:SetTexture("Interface\\AddOns\\VaultPlanner\\Textures\\VaultPlannerLogo.tga")
 
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     f.title:SetPoint("LEFT", f.titleIcon, "RIGHT", 6, 0)
@@ -329,6 +339,21 @@ function MainFrame:Build()
 
     f.rows = {}
     self.frame = f
+
+    -- Register with UISpecialFrames so ESC closes it.
+    if UISpecialFrames then
+        local already = false
+        for _, frameName in ipairs(UISpecialFrames) do
+            if frameName == "VaultPlannerFrame" then
+                already = true
+                break
+            end
+        end
+        if not already then
+            table.insert(UISpecialFrames, "VaultPlannerFrame")
+        end
+    end
+
     return f
 end
 
