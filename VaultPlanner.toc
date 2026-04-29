@@ -3,7 +3,7 @@
 ## Notes: Track Great Vault progress across all your alts.
 ## Author: danvernon
 ## Version: 0.1.0-rc1
-## X-Curse-Project-ID: 0
+## X-Curse-Project-ID: 1528483
 ## SavedVariables: VaultPlannerDB
 
 core/utils.lua
