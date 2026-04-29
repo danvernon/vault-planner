@@ -79,11 +79,51 @@ local function FormatTrackCell(trackKey, slots)
     return table.concat(lines, "\n")
 end
 
+local function ShowKillTooltip(row)
+    local c = row._char
+    if not c then return end
+    local kills = c.weeklyKills
+    GameTooltip:SetOwner(row, "ANCHOR_CURSOR")
+    GameTooltip:AddLine(c.name or "?", 1, 1, 1)
+
+    local raid = kills and kills.raid or {}
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Raid kills this week", 0.48, 0.89, 0.86)
+    if #raid == 0 then
+        GameTooltip:AddLine("  (none recorded)", 0.6, 0.69, 0.68)
+    else
+        for _, k in ipairs(raid) do
+            local diff = VaultPlanner.FormatLevelLabel("raid", k.difficultyID or 0)
+            GameTooltip:AddDoubleLine("  " .. (k.name or "?"), diff,
+                1, 1, 1, 0.36, 1.0, 0.48)
+        end
+    end
+
+    local mplus = kills and kills.mplus or {}
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Mythic+ runs this week", 0.48, 0.89, 0.86)
+    if #mplus == 0 then
+        GameTooltip:AddLine("  (none recorded)", 0.6, 0.69, 0.68)
+    else
+        for _, k in ipairs(mplus) do
+            local label = "+" .. tostring(k.level or 0)
+            if not k.onTime then label = label .. " (over time)" end
+            GameTooltip:AddDoubleLine("  " .. (k.name or "?"), label,
+                1, 1, 1, 0.36, 1.0, 0.48)
+        end
+    end
+
+    GameTooltip:Show()
+end
+
 local function CreateCharRow(parent, index)
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(ROW_HEIGHT)
     row:SetPoint("TOPLEFT", 0, -((index - 1) * ROW_STRIDE))
     row:SetPoint("RIGHT", 0, 0)
+    row:EnableMouse(true)
+    row:SetScript("OnEnter", ShowKillTooltip)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     row.divider = row:CreateTexture(nil, "ARTWORK")
     row.divider:SetPoint("TOPLEFT", 0, 4)
@@ -388,6 +428,7 @@ function MainFrame:Render()
         f.rows[i] = row
         row:Show()
 
+        row._char = c
         ApplyClassIcon(row.classIcon, c.classFile)
         row.name:SetText(C(COLORS.value, c.name or c._key or "?"))
 

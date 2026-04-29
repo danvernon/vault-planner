@@ -56,7 +56,7 @@ VaultPlanner.events:RegisterEvent("CHALLENGE_MODE_COMPLETED")
 VaultPlanner.events:RegisterEvent("BOSS_KILL")
 VaultPlanner.events:RegisterEvent("ENCOUNTER_END")
 
-VaultPlanner.events:SetScript("OnEvent", function(_, event)
+VaultPlanner.events:SetScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_LOGIN" then
         QueueRescan(0)
         C_Timer.After(3, function() QueueRescan(0) end)
@@ -64,7 +64,14 @@ VaultPlanner.events:SetScript("OnEvent", function(_, event)
         QueueRescan(2)
     elseif event == "WEEKLY_REWARDS_UPDATE" then
         QueueRescan(0.25)
-    elseif event == "CHALLENGE_MODE_COMPLETED" or event == "BOSS_KILL" or event == "ENCOUNTER_END" then
+    elseif event == "ENCOUNTER_END" then
+        local encounterID, encounterName, difficultyID, _, success = ...
+        VaultPlanner.Scanner:RecordEncounter(encounterID, encounterName, difficultyID, success)
+        QueueRescan(5)
+    elseif event == "CHALLENGE_MODE_COMPLETED" then
+        VaultPlanner.Scanner:RecordChallengeMode()
+        QueueRescan(5)
+    elseif event == "BOSS_KILL" then
         QueueRescan(5)
     end
 end)

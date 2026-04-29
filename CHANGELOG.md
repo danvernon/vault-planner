@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Hover any character row to see a tooltip listing every raid boss killed and every Mythic+ key completed this week, with their difficulty / key level. Auto-clears at weekly reset.
+- Tooltip now follows the cursor instead of anchoring to the right of the window.
+
 ## 0.1.0
 
 - Custom keyhole-vault logo in the title bar (`Textures/VaultPlannerLogo.tga`).

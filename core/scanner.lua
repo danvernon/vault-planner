@@ -129,7 +129,77 @@ function Scanner:ScanCurrentCharacter()
     VaultPlannerDB.characters[key] = record
 end
 
+local function CurrentCharacterRecord()
+    EnsureDB()
+    local key = VaultPlanner.GetCurrentCharacterKey()
+    local record = VaultPlannerDB.characters[key] or {}
+    VaultPlannerDB.characters[key] = record
+    return record
+end
+
+local function ClearStaleWeeklyKills(record)
+    local kills = record.weeklyKills
+    if not kills then return end
+    if kills.expiresAt and time() >= kills.expiresAt then
+        record.weeklyKills = nil
+    end
+end
+
+local function EnsureWeeklyKills(record)
+    ClearStaleWeeklyKills(record)
+    if not record.weeklyKills then
+        local expiresAt
+        if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+            expiresAt = time() + C_DateAndTime.GetSecondsUntilWeeklyReset()
+        end
+        record.weeklyKills = { raid = {}, mplus = {}, expiresAt = expiresAt }
+    end
+    record.weeklyKills.raid = record.weeklyKills.raid or {}
+    record.weeklyKills.mplus = record.weeklyKills.mplus or {}
+    return record.weeklyKills
+end
+
+function Scanner:RecordEncounter(encounterID, encounterName, difficultyID, success)
+    if success ~= 1 then return end
+    local _, instanceType = IsInInstance()
+    if instanceType ~= "raid" then return end
+
+    local record = CurrentCharacterRecord()
+    local kills = EnsureWeeklyKills(record)
+    table.insert(kills.raid, {
+        encounterID = encounterID,
+        name = encounterName,
+        difficultyID = difficultyID,
+        killedAt = time(),
+    })
+end
+
+function Scanner:RecordChallengeMode()
+    if not (C_ChallengeMode and C_ChallengeMode.GetCompletionInfo) then return end
+    local mapID, level, _, onTime = C_ChallengeMode.GetCompletionInfo()
+    if not mapID or not level or level <= 0 then return end
+
+    local mapName
+    if C_ChallengeMode.GetMapUIInfo then
+        mapName = C_ChallengeMode.GetMapUIInfo(mapID)
+    end
+
+    local record = CurrentCharacterRecord()
+    local kills = EnsureWeeklyKills(record)
+    table.insert(kills.mplus, {
+        mapID = mapID,
+        name = mapName or "Dungeon",
+        level = level,
+        onTime = onTime and true or false,
+        completedAt = time(),
+    })
+end
+
 function Scanner:GetCharacters()
     EnsureDB()
+    -- Lazily clear stale weekly kill logs on read.
+    for _, record in pairs(VaultPlannerDB.characters) do
+        ClearStaleWeeklyKills(record)
+    end
     return VaultPlannerDB.characters
 end
