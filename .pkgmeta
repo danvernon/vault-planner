@@ -1,0 +1,7 @@
+package-as: VaultPlanner
+
+ignore:
+  - README.md
+  - CHANGELOG.md
+  - .gitignore
+  - .github

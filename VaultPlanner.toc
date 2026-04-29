@@ -1,0 +1,12 @@
+## Interface: 120001, 120005
+## Title: VaultPlanner
+## Notes: Track Great Vault progress across all your alts.
+## Author: danvernon
+## Version: 0.1.0-rc1
+## X-Curse-Project-ID: 0
+## SavedVariables: VaultPlannerDB
+
+core/utils.lua
+core/scanner.lua
+ui/mainframe.lua
+VaultPlanner.lua
