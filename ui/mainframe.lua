@@ -432,11 +432,10 @@ function MainFrame:Render()
         ApplyClassIcon(row.classIcon, c.classFile)
         row.name:SetText(C(COLORS.value, c.name or c._key or "?"))
 
-        local claimedThisWeek = c.vaultClaimedExpiresAt and c.vaultClaimedExpiresAt > now
-        if c.canClaim then
+        if c.vaultStatus == "ready" then
             row.claimBadge:SetText("|TInterface\\GossipFrame\\AvailableQuestIcon:14|t " .. C(COLORS.warn, "Vault ready"))
             row.claimBadge:Show()
-        elseif claimedThisWeek then
+        elseif c.vaultStatus == "claimed" then
             row.claimBadge:SetText("|TInterface\\RaidFrame\\ReadyCheck-Ready:14|t " .. C(COLORS.good, "Vault claimed"))
             row.claimBadge:Show()
         else

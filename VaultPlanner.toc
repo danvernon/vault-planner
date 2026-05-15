@@ -2,7 +2,7 @@
 ## Title: VaultPlanner
 ## Notes: Track Great Vault progress across all your alts.
 ## Author: danvernon
-## Version: 0.1.1
+## Version: 0.1.2
 ## X-Curse-Project-ID: 1528483
 ## SavedVariables: VaultPlannerDB
 

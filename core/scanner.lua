@@ -53,7 +53,8 @@ local function CurrentItemLevel()
     return math.floor((equipped or 0) + 0.5)
 end
 
-function Scanner:ScanCurrentCharacter()
+function Scanner:ScanCurrentCharacter(opts)
+    opts = opts or {}
     EnsureDB()
 
     if C_WeeklyRewards and C_WeeklyRewards.HasGeneratedRewards
@@ -76,10 +77,11 @@ function Scanner:ScanCurrentCharacter()
         record.weeklyResetAt = time() + C_DateAndTime.GetSecondsUntilWeeklyReset()
     end
 
-    -- Auto-clear last week's "claimed" badge once the weekly reset has rolled.
+    -- Roll the vault status forward at the weekly reset boundary.
     local now = time()
-    if record.vaultClaimedExpiresAt and now >= record.vaultClaimedExpiresAt then
-        record.vaultClaimedExpiresAt = nil
+    if record.vaultStatusExpiresAt and now >= record.vaultStatusExpiresAt then
+        record.vaultStatus = nil
+        record.vaultStatusExpiresAt = nil
     end
 
     record.tracks = record.tracks or {}
@@ -102,9 +104,13 @@ function Scanner:ScanCurrentCharacter()
     -- trustworthy data — i.e. the player actually has the vault open.
     local vaultFrameOpen = WeeklyRewardsFrame and WeeklyRewardsFrame.IsShown
         and WeeklyRewardsFrame:IsShown()
-    local prevCanClaim = record.canClaim
+    -- liveClaimState is passed from the vault frame's OnHide hook, where the
+    -- API still reflects the user's just-finished interaction even though the
+    -- frame is no longer visible.
+    local trustClaimState = opts.liveClaimState or vaultFrameOpen
+    local prevStatus = record.vaultStatus
 
-    if anyTrackPopulated and vaultFrameOpen
+    if anyTrackPopulated and trustClaimState
         and C_WeeklyRewards and C_WeeklyRewards.CanClaimRewards then
         local canClaim = C_WeeklyRewards.CanClaimRewards()
         if not canClaim then
@@ -118,12 +124,33 @@ function Scanner:ScanCurrentCharacter()
                 if canClaim then break end
             end
         end
-        record.canClaim = canClaim
 
-        -- Latch a "claimed for this week" flag that auto-expires at next reset.
-        if prevCanClaim and not canClaim and record.weeklyResetAt then
-            record.vaultClaimedExpiresAt = record.weeklyResetAt
+        if canClaim then
+            -- A reward is waiting. Always reflect this in the DB.
+            record.vaultStatus = "ready"
+            record.vaultStatusExpiresAt = record.weeklyResetAt
+        elseif prevStatus == "ready" then
+            -- We previously knew there was a vault to claim and now there
+            -- isn't — the user has just claimed it. Persist that.
+            record.vaultStatus = "claimed"
+            record.vaultStatusExpiresAt = record.weeklyResetAt
         end
+        -- If canClaim is false and prevStatus wasn't "ready", we have no signal
+        -- to assert anything — leave the existing status alone.
+    end
+
+    -- One-shot migration from the old multi-field scheme.
+    if record.canClaim ~= nil or record.canClaimExpiresAt or record.vaultClaimedExpiresAt then
+        if record.canClaim and not record.vaultStatus then
+            record.vaultStatus = "ready"
+            record.vaultStatusExpiresAt = record.canClaimExpiresAt or record.weeklyResetAt
+        elseif record.vaultClaimedExpiresAt and not record.vaultStatus then
+            record.vaultStatus = "claimed"
+            record.vaultStatusExpiresAt = record.vaultClaimedExpiresAt
+        end
+        record.canClaim = nil
+        record.canClaimExpiresAt = nil
+        record.vaultClaimedExpiresAt = nil
     end
 
     VaultPlannerDB.characters[key] = record
@@ -197,9 +224,21 @@ end
 
 function Scanner:GetCharacters()
     EnsureDB()
-    -- Lazily clear stale weekly kill logs on read.
+    local now = time()
     for _, record in pairs(VaultPlannerDB.characters) do
         ClearStaleWeeklyKills(record)
+        -- Expire vault status at its boundary.
+        if record.vaultStatusExpiresAt and now >= record.vaultStatusExpiresAt then
+            record.vaultStatus = nil
+            record.vaultStatusExpiresAt = nil
+        end
+        -- Belt-and-suspenders for records that have a status without an
+        -- explicit expiry but whose last known weekly-reset boundary has
+        -- already passed (e.g. legacy data, alts never logged in).
+        if record.vaultStatus and not record.vaultStatusExpiresAt
+            and record.weeklyResetAt and now >= record.weeklyResetAt then
+            record.vaultStatus = nil
+        end
     end
     return VaultPlannerDB.characters
 end

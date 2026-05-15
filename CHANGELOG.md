@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+- Reliable claim detection: hooks `WeeklyRewardsFrame:OnHide` so claim state is captured the instant the vault closes, instead of relying on a flaky post-event scan.
+- New single source of truth in the DB: `vaultStatus` (`"ready"` / `"claimed"` / `nil`) plus an explicit weekly-reset expiry. Auto-rolls forward at the reset boundary.
+- Legacy records are migrated automatically on next scan.
+- Stale "Vault ready" badges on alts that haven't been logged into in weeks are now cleaned up on read.
+- New slash command `/vp claimed` to manually mark the current character as claimed (escape hatch for old data).
+
 ## 0.1.1
 
 - Hover any character row to see a tooltip listing every raid boss killed and every Mythic+ key completed this week, with their difficulty / key level. Auto-clears at weekly reset.
